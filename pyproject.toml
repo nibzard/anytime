@@ -37,4 +37,6 @@ anytime = "anytime.cli.main:main"
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-
+markers = [
+  "benchmark: performance and timing checks",
+]
