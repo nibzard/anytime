@@ -98,6 +98,28 @@ for x in stream_values():
         break
 ```
 
+## Examples (progressive)
+
+Start with a guided sequence of runnable scripts in `examples/`:
+
+```bash
+python examples/01_hello_anytime.py
+```
+
+Suggested order:
+1) `examples/01_hello_anytime.py`
+2) `examples/02_bernoulli_exact.py`
+3) `examples/03_ab_test_simple.py`
+4) `examples/04_streaming_monitor.py`
+5) `examples/05_variance_adaptive.py`
+6) `examples/06_two_sample_cs.py`
+7) `examples/07_early_stopping.py`
+8) `examples/08_multiple_comparisons.py`
+9) `examples/09_diagnostic_checks.py`
+10) `examples/10_custom_datasets.py`
+
+See `examples/README.md` for descriptions and datasets.
+
 ## CLI (low friction)
 
 The CLI reads CSVs and prints progress plus diagnostics.
