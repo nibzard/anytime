@@ -93,7 +93,8 @@ def test_drift_tier_propagation():
     cs = HoeffdingCS(spec)
 
     # Tighten detector to force a drift flag quickly.
-    cs._drift_detector = DriftDetector(window_size=5, threshold=0.2)
+    from anytime.diagnostics.checks import DriftDetector
+    cs._diag.drift_detector = DriftDetector(window_size=5, threshold=0.2)
 
     for _ in range(10):
         cs.update(0.0)
@@ -102,3 +103,47 @@ def test_drift_tier_propagation():
 
     iv = cs.interval()
     assert iv.tier == GuaranteeTier.DIAGNOSTIC
+
+
+def test_diagnostics_snapshot():
+    """Diagnostics snapshot should create independent copy."""
+    diag = Diagnostics()
+    diag.out_of_range_count = 5
+    diag.missing_count = 3
+    diag.tier = GuaranteeTier.DIAGNOSTIC
+
+    snapshot = diag.snapshot()
+
+    # Modify original
+    diag.out_of_range_count = 10
+    diag.missing_count = 0
+    diag.tier = GuaranteeTier.GUARANTEED
+
+    # Snapshot should be unchanged
+    assert snapshot.out_of_range_count == 5
+    assert snapshot.missing_count == 3
+    assert snapshot.tier == GuaranteeTier.DIAGNOSTIC
+
+
+def test_diagnostics_reset():
+    """Reset should clear diagnostics state."""
+    from anytime.spec import StreamSpec
+    from anytime.cs.hoeffding import HoeffdingCS
+
+    # Create with clip mode to allow out-of-range values
+    spec = StreamSpec(alpha=0.1, support=(0.0, 1.0), kind="bounded", two_sided=True, clip_mode="clip")
+    cs = HoeffdingCS(spec)
+
+    # Add data that triggers diagnostics
+    cs.update(1.5)  # Out of range - will be clipped
+    cs.update(0.5)
+
+    assert cs._diag.diagnostics.out_of_range_count > 0
+    assert cs._diag.diagnostics.clipped_count > 0
+
+    # Reset should clear state
+    cs.reset()
+    assert cs._diag.diagnostics.out_of_range_count == 0
+    assert cs._diag.diagnostics.missing_count == 0
+    assert cs._diag.diagnostics.clipped_count == 0
+    assert cs._diag.diagnostics.tier == GuaranteeTier.GUARANTEED

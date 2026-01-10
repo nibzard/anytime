@@ -7,13 +7,7 @@ from anytime.spec import StreamSpec
 from anytime.types import EValue, GuaranteeTier
 from anytime.core.estimators import OnlineMean
 from anytime.errors import AssumptionViolationError
-from anytime.diagnostics.checks import (
-    Diagnostics,
-    RangeChecker,
-    MissingnessTracker,
-    DriftDetector,
-    apply_diagnostics,
-)
+from anytime.diagnostics.checks import DiagnosticsSetup, apply_diagnostics
 
 
 class BernoulliMixtureE:
@@ -56,21 +50,18 @@ class BernoulliMixtureE:
         self.b = b
         self._estimator = OnlineMean()
         self._sum = 0.0
-        self._diagnostics = Diagnostics()
-        self._range_checker = RangeChecker(spec.support, spec.clip_mode, self._diagnostics)
-        self._missingness = MissingnessTracker()
-        self._drift_detector = DriftDetector()
+        self._diag = DiagnosticsSetup(spec)
 
     def update(self, x: float) -> None:
         """Update with new observation (should be 0 or 1)."""
         x_checked = apply_diagnostics(
-            x, self._range_checker, self._missingness, self._drift_detector
+            x, self._diag.range_checker, self._diag.missingness, self._diag.drift_detector
         )
         if x_checked is None:
             return
         if x_checked not in (0.0, 1.0):
-            self._diagnostics.out_of_range_count += 1
-            self._diagnostics.tier = GuaranteeTier.DIAGNOSTIC
+            self._diag.diagnostics.out_of_range_count += 1
+            self._diag.diagnostics.tier = GuaranteeTier.DIAGNOSTIC
             raise AssumptionViolationError(
                 f"Bernoulli data must be 0 or 1, got {x_checked}"
             )
@@ -87,8 +78,8 @@ class BernoulliMixtureE:
                 e=1.0,
                 decision=False,
                 alpha=self.spec.alpha,
-                tier=self._diagnostics.tier,
-                diagnostics=self._diagnostics,
+                tier=self._diag.diagnostics.tier,
+                diagnostics=self._diag.diagnostics,
             )
 
         s = self._sum
@@ -125,11 +116,12 @@ class BernoulliMixtureE:
             e=e,
             decision=decision,
             alpha=self.spec.alpha,
-            tier=self._diagnostics.tier,
-            diagnostics=self._diagnostics,
+            tier=self._diag.diagnostics.tier,
+            diagnostics=self._diag.diagnostics.snapshot(),
         )
 
     def reset(self) -> None:
         """Reset to initial state."""
         self._estimator.reset()
         self._sum = 0.0
+        self._diag.reset()

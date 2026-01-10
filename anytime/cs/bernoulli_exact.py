@@ -1,4 +1,22 @@
-"""Bernoulli (binary) confidence sequences."""
+"""Bernoulli (binary) confidence sequences.
+
+References:
+    - The beta-binomial mixture e-process is a special case of the
+      "Universal inference" approach by Wasserman et al. (2020).
+    - Related to the "clopper-Pearson" style time-uniform bounds using
+      beta conjugate priors.
+
+E-process formula:
+    E_t(p) = Beta(S_t+a, t-S_t+b) / (Beta(a,b) * p^{S_t} * (1-p)^{t-S_t})
+
+    where S_t is the number of successes, t is total trials, and a,b are
+    beta prior parameters (default a=b=0.5 gives Jeffreys prior).
+
+The confidence sequence inverts this e-process: {p: E_t(p) < 1/alpha}.
+
+For one-sided intervals, we use 2*alpha in the threshold, giving a tighter
+bound that's valid for one-sided inference.
+"""
 
 import math
 from scipy.optimize import brentq
@@ -8,21 +26,21 @@ from anytime.spec import StreamSpec
 from anytime.types import Interval, GuaranteeTier
 from anytime.core.estimators import OnlineMean
 from anytime.errors import AssumptionViolationError
-from anytime.diagnostics.checks import (
-    Diagnostics,
-    RangeChecker,
-    MissingnessTracker,
-    DriftDetector,
-    apply_diagnostics,
-)
+from anytime.diagnostics.checks import DiagnosticsSetup, apply_diagnostics
 
 
 class BernoulliCS:
     """Time-uniform confidence sequence for Bernoulli (0/1) data.
 
     Uses a beta-binomial mixture martingale and inverts the e-process:
-        E_t(p) = Beta(S_t+a, t-S_t+b) / (Beta(a,b) * p^{S_t} (1-p)^{t-S_t})
+        E_t(p) = Beta(S_t+a, t-S_t+b) / (Beta(a,b) * p^{S_t} * (1-p)^{t-S_t})
     The confidence sequence is {p: E_t(p) < 1/alpha}.
+
+    For one-sided intervals, uses 2*alpha in the threshold, producing
+    tighter bounds valid for one-sided inference.
+
+    Parameters:
+        a, b: Beta prior parameters (default 0.5, 0.5 for Jeffreys prior)
     """
 
     def __init__(self, spec: StreamSpec, a: float = 0.5, b: float = 0.5):
@@ -35,21 +53,19 @@ class BernoulliCS:
         self.b = b
         self._estimator = OnlineMean()
         self._sum = 0.0  # Sum of observations (number of successes)
-        self._diagnostics = Diagnostics()
-        self._range_checker = RangeChecker(spec.support, spec.clip_mode, self._diagnostics)
-        self._missingness = MissingnessTracker()
-        self._drift_detector = DriftDetector()
+        self._diag = DiagnosticsSetup(spec)
 
     def update(self, x: float) -> None:
         """Update with new observation (should be 0 or 1)."""
         x_checked = apply_diagnostics(
-            x, self._range_checker, self._missingness, self._drift_detector
+            x, self._diag.range_checker, self._diag.missingness, self._diag.drift_detector
         )
         if x_checked is None:
             return
         if x_checked not in (0.0, 1.0):
-            self._diagnostics.out_of_range_count += 1
-            self._diagnostics.tier = GuaranteeTier.DIAGNOSTIC
+            self._diag.diagnostics.out_of_range_count += 1
+            from anytime.types import GuaranteeTier
+            self._diag.diagnostics.tier = GuaranteeTier.DIAGNOSTIC
             raise AssumptionViolationError(
                 f"Bernoulli data must be 0 or 1, got {x_checked}"
             )
@@ -79,11 +95,12 @@ class BernoulliCS:
                 lo=0.0,
                 hi=1.0,
                 alpha=self.spec.alpha,
-                tier=self._diagnostics.tier,
-                diagnostics=self._diagnostics,
+                tier=self._diag.diagnostics.tier,
+                diagnostics=self._diag.diagnostics,
             )
 
-        target = math.log(1.0 / self.spec.alpha)
+        # For one-sided, use 2*alpha in the e-value threshold (gives tighter bound)
+        target = math.log(1.0 / (2.0 * self.spec.alpha if not self.spec.two_sided else self.spec.alpha))
         eps = 1e-12
 
         def f(p: float) -> float:
@@ -106,8 +123,8 @@ class BernoulliCS:
             lo=lo,
             hi=hi,
             alpha=self.spec.alpha,
-            tier=self._diagnostics.tier,
-            diagnostics=self._diagnostics,
+            tier=self._diag.diagnostics.tier,
+            diagnostics=self._diag.diagnostics.snapshot(),
         )
 
     @staticmethod
@@ -138,3 +155,4 @@ class BernoulliCS:
         """Reset to initial state."""
         self._estimator.reset()
         self._sum = 0.0
+        self._diag.reset()

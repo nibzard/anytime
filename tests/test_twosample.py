@@ -77,3 +77,40 @@ def test_invalid_arm(ab_spec):
     cs = TwoSampleHoeffdingCS(ab_spec)
     with pytest.raises(ValueError):
         cs.update(("C", 0.5))
+
+
+def test_twosample_hoeffding_one_sided():
+    """One-sided two-sample Hoeffding should produce valid intervals."""
+    spec = ABSpec(alpha=0.05, support=(0.0, 1.0), kind="bounded", two_sided=False)
+    cs = TwoSampleHoeffdingCS(spec)
+
+    for i in range(50):
+        cs.update(("A", 0.5))
+        cs.update(("B", 0.6))
+
+    iv = cs.interval()
+    assert iv.t == 100
+    # One-sided should be narrower (tighter) than two-sided
+    spec_two = ABSpec(alpha=0.05, support=(0.0, 1.0), kind="bounded", two_sided=True)
+    cs_two = TwoSampleHoeffdingCS(spec_two)
+    for i in range(50):
+        cs_two.update(("A", 0.5))
+        cs_two.update(("B", 0.6))
+    iv_two = cs_two.interval()
+    # One-sided width should be <= two-sided width (at same alpha)
+    assert (iv.hi - iv.lo) <= (iv_two.hi - iv_two.lo)
+
+
+def test_twosample_empirical_bernstein_one_sided():
+    """One-sided two-sample EB should produce valid intervals."""
+    spec = ABSpec(alpha=0.05, support=(0.0, 1.0), kind="bounded", two_sided=False)
+    cs = TwoSampleEmpiricalBernsteinCS(spec)
+
+    for i in range(50):
+        cs.update(("A", 0.5))
+        cs.update(("B", 0.6))
+
+    iv = cs.interval()
+    assert iv.t == 100
+    assert not __import__("math").isnan(iv.lo)
+    assert not __import__("math").isnan(iv.hi)

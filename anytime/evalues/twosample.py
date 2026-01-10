@@ -4,14 +4,8 @@ import math
 from collections import deque
 
 from anytime.spec import ABSpec
-from anytime.types import EValue, GuaranteeTier
-from anytime.diagnostics.checks import (
-    Diagnostics,
-    RangeChecker,
-    MissingnessTracker,
-    DriftDetector,
-    apply_diagnostics,
-)
+from anytime.types import EValue
+from anytime.diagnostics.checks import DiagnosticsSetup, apply_diagnostics, merge_diagnostics
 
 
 class TwoSampleMeanMixtureE:
@@ -49,13 +43,24 @@ class TwoSampleMeanMixtureE:
         self._width = 2.0 * self._range
         self._c = (self._width ** 2) / 8.0
         self.tau = tau if tau is not None else 1.0 / self._width
-        self._diagnostics = Diagnostics()
-        self._range_checker_a = RangeChecker(spec.support, spec.clip_mode, self._diagnostics)
-        self._range_checker_b = RangeChecker(spec.support, spec.clip_mode, self._diagnostics)
-        self._missingness_a = MissingnessTracker()
-        self._missingness_b = MissingnessTracker()
-        self._drift_a = DriftDetector()
-        self._drift_b = DriftDetector()
+
+        from anytime.spec import StreamSpec
+        stream_spec = StreamSpec(
+            alpha=spec.alpha,
+            support=spec.support,
+            kind=spec.kind,
+            two_sided=spec.two_sided,
+            name=spec.name,
+            clip_mode=spec.clip_mode,
+        )
+        self._diag_a = DiagnosticsSetup(stream_spec)
+        self._diag_b = DiagnosticsSetup(stream_spec)
+        self._range_checker_a = self._diag_a.range_checker
+        self._range_checker_b = self._diag_b.range_checker
+        self._missingness_a = self._diag_a.missingness
+        self._missingness_b = self._diag_b.missingness
+        self._drift_a = self._diag_a.drift_detector
+        self._drift_b = self._diag_b.drift_detector
 
     def update(self, pair: tuple[str, float]) -> None:
         """Update with new (arm, value) observation."""
@@ -87,8 +92,16 @@ class TwoSampleMeanMixtureE:
         a = self._c * t + 1.0 / (2.0 * self.tau * self.tau)
         sqrt_a = math.sqrt(a)
         z = s / (2.0 * sqrt_a)
+
+        # Compute in log space to prevent overflow
+        # log_e = s^2/(4a) + log(1 + erf(z)) - log(tau) - 0.5*log(2a)
+        log_exp_term = (s * s) / (4.0 * a)
+        # Clamp log_exp_term to prevent overflow (exp(709) is near float64 limit)
+        if log_exp_term > 700:
+            log_exp_term = 700
+
         return (
-            math.exp((s * s) / (4.0 * a))
+            math.exp(log_exp_term)
             * (1.0 + math.erf(z))
             / (self.tau * math.sqrt(2.0 * a))
         )
@@ -97,14 +110,16 @@ class TwoSampleMeanMixtureE:
         """Get current e-value."""
         t = self._pairs
 
+        diagnostics = merge_diagnostics(self._diag_a.diagnostics, self._diag_b.diagnostics)
+
         if t == 0:
             return EValue(
                 t=0,
                 e=1.0,
                 decision=False,
                 alpha=self.spec.alpha,
-                tier=self._diagnostics.tier,
-                diagnostics=self._diagnostics,
+                tier=diagnostics.tier,
+                diagnostics=diagnostics,
             )
 
         if self.side == "ge":
@@ -123,8 +138,8 @@ class TwoSampleMeanMixtureE:
             e=e,
             decision=decision,
             alpha=self.spec.alpha,
-            tier=self._diagnostics.tier,
-            diagnostics=self._diagnostics,
+            tier=diagnostics.tier,
+            diagnostics=diagnostics.snapshot(),
         )
 
     def reset(self) -> None:
@@ -133,3 +148,5 @@ class TwoSampleMeanMixtureE:
         self._queue_b.clear()
         self._sum = 0.0
         self._pairs = 0
+        self._diag_a.reset()
+        self._diag_b.reset()

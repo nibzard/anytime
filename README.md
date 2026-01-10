@@ -225,6 +225,5 @@ pytest -q
 
 ## Limitations and roadmap
 
-- Two-sample CS is two-sided only (one-sided support not implemented yet).
 - Subgaussian methods are not implemented (bounded/Bernoulli only).
 - Atlas scenarios are still a small smoke set; larger suites are planned.

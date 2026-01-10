@@ -123,7 +123,10 @@ def write_manifest(
         "timestamp": time.time(),
         "datetime": datetime.now().isoformat(),
         "versions": {
-            "python": f"{_get_py_version()}",
+            "python": _get_py_version(),
+            "numpy": _get_package_version("numpy"),
+            "scipy": _get_package_version("scipy"),
+            "pyyaml": _get_package_version("yaml"),
         },
     }
 
@@ -146,6 +149,20 @@ def write_manifest(
 def _get_py_version() -> str:
     import sys
     return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+
+def _get_package_version(package_name: str) -> str:
+    """Get package version, handling 'yaml' -> 'pyyaml' mapping."""
+    import importlib.metadata as im
+
+    # Map import names to package names
+    name_map = {"yaml": "pyyaml"}
+    lookup_name = name_map.get(package_name, package_name)
+
+    try:
+        return im.version(lookup_name)
+    except Exception:
+        return "unknown"
 
 
 def _get_git_hash() -> str | None:

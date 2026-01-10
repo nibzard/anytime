@@ -1,8 +1,7 @@
 """Benchmarking framework for anytime inference methods."""
 
-import random
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -12,48 +11,11 @@ from anytime.cs.empirical_bernstein import EmpiricalBernsteinCS
 from anytime.cs.bernoulli_exact import BernoulliCS
 from anytime.twosample.hoeffding import TwoSampleHoeffdingCS
 from anytime.twosample.empirical_bernstein import TwoSampleEmpiricalBernsteinCS
-
-
-@dataclass
-class Scenario:
-    """A benchmark scenario.
-
-    Attributes:
-        name: Scenario name
-        true_mean: True mean for one-sample
-        true_lift: True lift for two-sample (mean_B - mean_A)
-        distribution: "bernoulli", "uniform", or "normal"
-        support: (low, high) bounds
-        n_max: Maximum sample size
-        seed: Random seed
-        is_null: Whether this scenario represents a null hypothesis
-    """
-
-    name: str
-    true_mean: float | None = None
-    true_lift: float | None = None
-    distribution: str = "bernoulli"
-    support: tuple[float, float] = (0.0, 1.0)
-    n_max: int = 1000
-    seed: int = 42
-    is_null: bool = False
-
-    def __post_init__(self):
-        if self.distribution == "bernoulli" and self.support != (0.0, 1.0):
-            raise ValueError("Bernoulli requires support=(0.0, 1.0)")
-
-
-@dataclass
-class StoppingRule:
-    """A stopping rule for sequential tests.
-
-    Attributes:
-        name: Rule name
-        fn: Function that takes (interval, t) and returns bool (stop)
-    """
-
-    name: str
-    fn: Callable[[Any, int], bool]
+from anytime.atlas.types import Scenario, StoppingRule
+from anytime.atlas.scenarios import (
+    OneSampleGenerator,
+    TwoSampleGenerator,
+)
 
 
 @dataclass
@@ -68,6 +30,8 @@ class Metrics:
         avg_width: Average final interval width
         median_stop_time: Median stopping time
         avg_runtime: Average runtime per simulation
+        evalue_decision_rate: Proportion of sims where e-value exceeded 1/alpha
+        naive_peeking_error: Type I error under naive peeking (invalid baseline)
     """
 
     coverage: float = 0.0
@@ -77,6 +41,8 @@ class Metrics:
     avg_width: float = 0.0
     median_stop_time: float = 0.0
     avg_runtime: float = 0.0
+    evalue_decision_rate: float = 0.0
+    naive_peeking_error: float = 0.0
 
     def to_dict(self) -> dict[str, float]:
         return {
@@ -87,32 +53,37 @@ class Metrics:
             "avg_width": self.avg_width,
             "median_stop_time": self.median_stop_time,
             "avg_runtime": self.avg_runtime,
+            "evalue_decision_rate": self.evalue_decision_rate,
+            "naive_peeking_error": self.naive_peeking_error,
         }
 
 
-def generate_bernoulli(p: float, n: int, seed: int) -> list[float]:
-    """Generate Bernoulli samples."""
-    rng = random.Random(seed)
-    return [float(rng.random() < p) for _ in range(n)]
+def naive_peeking_test(data: list[float], true_mean: float, alpha: float, check_interval: int = 10) -> tuple[bool, int]:
+    """Simulate naive peeking with classical t-tests (INVALID baseline).
 
+    This demonstrates why naive peeking is wrong: it inflates Type I error.
 
-def generate_uniform(a: float, b: float, n: int, seed: int) -> list[float]:
-    """Generate uniform samples."""
-    rng = random.Random(seed)
-    return [a + (b - a) * rng.random() for _ in range(n)]
+    Args:
+        data: Stream of observations
+        true_mean: Null hypothesis value
+        alpha: Significance level
+        check_interval: Check every n observations
 
+    Returns:
+        (rejected, stop_time): Whether we rejected and when
+    """
+    from scipy import stats
 
-def generate_ab_bernoulli(p_a: float, p_b: float, n: int, seed: int) -> list[tuple[str, float]]:
-    """Generate paired A/B Bernoulli samples."""
-    rng = random.Random(seed)
-    data = []
-    for i in range(n):
-        # Alternate between arms
-        if i % 2 == 0:
-            data.append(("A", float(rng.random() < p_a)))
-        else:
-            data.append(("B", float(rng.random() < p_b)))
-    return data
+    n = len(data)
+    for t in range(check_interval, n + 1, check_interval):
+        sample = data[:t]
+        if len(sample) < 2:
+            continue
+        # Classical t-test (INVALID under optional stopping!)
+        _, pvalue = stats.ttest_1samp(sample, popmean=true_mean)
+        if pvalue < alpha:
+            return True, t
+    return False, n
 
 
 class AtlasRunner:
@@ -127,6 +98,8 @@ class AtlasRunner:
         spec: StreamSpec,
         cs_class: type,
         stopping_rule: StoppingRule | None = None,
+        evalue_class: type | None = None,
+        track_naive_peeking: bool = False,
     ) -> Metrics:
         """Run one-sample Monte Carlo benchmark.
 
@@ -135,6 +108,8 @@ class AtlasRunner:
             spec: Stream specification
             cs_class: Confidence sequence class
             stopping_rule: Optional stopping rule (None = run to n_max)
+            evalue_class: Optional e-value class for decision tracking
+            track_naive_peeking: Whether to track naive peeking baseline
 
         Returns:
             Aggregated metrics
@@ -147,22 +122,29 @@ class AtlasRunner:
         widths = []
         stop_times = []
         runtimes = []
+        evalue_decision_count = 0
+        naive_peeking_count = 0
 
         for i in range(self.n_sim):
             t0 = time.time()
 
             # Generate data
-            if scenario.distribution == "bernoulli":
-                data = generate_bernoulli(scenario.true_mean, scenario.n_max, scenario.seed + i)
-            elif scenario.distribution == "uniform":
-                data = generate_uniform(scenario.support[0], scenario.support[1], scenario.n_max, scenario.seed + i)
-            else:
-                raise ValueError(f"Unknown distribution: {scenario.distribution}")
+            data = OneSampleGenerator.get(scenario, scenario.n_max, offset=i)
+
+            # Track naive peeking (invalid baseline)
+            if track_naive_peeking and scenario.is_null:
+                rejected, _ = naive_peeking_test(data, scenario.true_mean, spec.alpha)
+                if rejected:
+                    naive_peeking_count += 1
 
             # Run CS
             cs = cs_class(spec)
             stopped = False
             covered_all = True
+
+            # Run e-value in parallel if provided
+            evalue = evalue_class(spec) if evalue_class else None
+            evalue_decided_this_sim = False
 
             for t, x in enumerate(data, 1):
                 cs.update(x)
@@ -170,6 +152,13 @@ class AtlasRunner:
 
                 if not (iv.lo <= scenario.true_mean <= iv.hi):
                     covered_all = False
+
+                if evalue and not evalue_decided_this_sim:
+                    evalue.update(x)
+                    ev = evalue.evalue()
+                    if ev.decision:
+                        evalue_decision_count += 1
+                        evalue_decided_this_sim = True  # Only count once per sim
 
                 if stopping_rule and not stopped:
                     if stopping_rule.fn(iv, t):
@@ -198,6 +187,8 @@ class AtlasRunner:
             avg_width=np.mean(widths),
             median_stop_time=np.median(stop_times),
             avg_runtime=np.mean(runtimes),
+            evalue_decision_rate=(evalue_decision_count / self.n_sim) if evalue_class else 0.0,
+            naive_peeking_error=(naive_peeking_count / self.n_sim) if track_naive_peeking and scenario.is_null else 0.0,
         )
 
     def run_two_sample(
@@ -231,12 +222,7 @@ class AtlasRunner:
             t0 = time.time()
 
             # Generate data
-            if scenario.distribution == "bernoulli":
-                p_a = scenario.true_mean - scenario.true_lift / 2
-                p_b = scenario.true_mean + scenario.true_lift / 2
-                data = generate_ab_bernoulli(p_a, p_b, scenario.n_max, scenario.seed + i)
-            else:
-                raise ValueError(f"Unknown distribution for AB: {scenario.distribution}")
+            data = TwoSampleGenerator.get(scenario, scenario.n_max, offset=i)
 
             # Run CS
             cs = cs_class(spec)

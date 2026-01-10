@@ -27,7 +27,7 @@ st.sidebar.header("Configuration")
 alpha = st.sidebar.slider("Significance level (α)", 0.01, 0.20, 0.05, 0.01)
 p_control = st.sidebar.slider("Control conversion rate", 0.0, 1.0, 0.50, 0.01)
 p_treatment = st.sidebar.slider("Treatment conversion rate", 0.0, 1.0, 0.55, 0.01)
-method = st.sidebar.selectbox("Method", ["empirical_bernstein", "hoeffding", "bernoulli"])
+method = st.sidebar.selectbox("Method", ["empirical_bernstein", "hoeffding"])
 n_max = st.sidebar.slider("Max sample size", 100, 5000, 1000, 100)
 look_interval = st.sidebar.slider("Check every n samples", 1, 100, 10)
 
@@ -84,12 +84,11 @@ with col1:
         )
 
         # Select method
-        if method == "hoeffding":
-            cs = TwoSampleHoeffdingCS(spec)
-        elif method == "empirical_bernstein":
-            cs = TwoSampleEmpiricalBernsteinCS(spec)
-        else:  # bernoulli
-            cs = TwoSampleEmpiricalBernsteinCS(spec)
+        method_map = {
+            "hoeffding": TwoSampleHoeffdingCS,
+            "empirical_bernstein": TwoSampleEmpiricalBernsteinCS,
+        }
+        cs = method_map[method](spec)
 
         # Run simulation
         for i in range(n_max):

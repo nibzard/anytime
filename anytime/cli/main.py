@@ -1,6 +1,5 @@
 """Command-line interface for anytime inference."""
 
-import csv
 import sys
 from pathlib import Path
 
@@ -20,6 +19,7 @@ from anytime.config import (
     JSONLLogger,
     validate_atlas_config,
 )
+from anytime.io import read_one_sample_csv, read_ab_test_csv
 from anytime.atlas.runner import AtlasRunner, Scenario, StoppingRule
 from anytime.atlas.report import generate_comparison_report
 
@@ -97,10 +97,11 @@ def mean(config: str, output: str | None):
     cs = cs_cls(spec)
 
     try:
-        with open(input_file, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                x = float(row[column])
+        reader = read_one_sample_csv(input_file, value_column=column)
+
+        for row, row_num in reader.rows():
+            x = reader.read_numeric(row, column)
+            if x is not None:
                 cs.update(x)
                 iv = cs.interval()
 
@@ -134,12 +135,23 @@ def mean(config: str, output: str | None):
         if summary:
             click.echo(f"  Diagnostics: {summary}")
 
+        # Print CSV read summary
+        csv_summary = reader.get_summary()
+        if csv_summary["missing_values"] > 0 or csv_summary["invalid_values"] > 0:
+            click.echo(f"\nCSV reading summary:")
+            click.echo(f"  Rows processed: {csv_summary['row_count']}")
+            click.echo(f"  Missing values: {csv_summary['missing_values']}")
+            click.echo(f"  Invalid values: {csv_summary['invalid_values']}")
+
         if run_dir:
             write_manifest(run_dir, cfg)
             click.echo(f"\nResults written to {run_dir}")
 
     except FileNotFoundError:
         click.echo(f"Input file not found: {input_file}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     finally:
         if logger:
@@ -192,11 +204,12 @@ def abtest(config: str, output: str | None):
     cs = cs_cls(spec)
 
     try:
-        with open(input_file, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                arm = row[arm_col]
-                x = float(row[val_col])
+        reader = read_ab_test_csv(input_file, arm_column=arm_col, value_column=val_col)
+
+        for row, row_num in reader.rows():
+            arm = row[arm_col]
+            x = reader.read_numeric(row, val_col)
+            if x is not None:
                 cs.update((arm, x))
                 iv = cs.interval()
 
@@ -230,6 +243,14 @@ def abtest(config: str, output: str | None):
         if summary:
             click.echo(f"  Diagnostics: {summary}")
 
+        # Print CSV read summary
+        csv_summary = reader.get_summary()
+        if csv_summary["missing_values"] > 0 or csv_summary["invalid_values"] > 0:
+            click.echo(f"\nCSV reading summary:")
+            click.echo(f"  Rows processed: {csv_summary['row_count']}")
+            click.echo(f"  Missing values: {csv_summary['missing_values']}")
+            click.echo(f"  Invalid values: {csv_summary['invalid_values']}")
+
         if run_dir:
             write_manifest(run_dir, cfg)
             click.echo(f"\nResults written to {run_dir}")
@@ -237,41 +258,55 @@ def abtest(config: str, output: str | None):
     except FileNotFoundError:
         click.echo(f"Input file not found: {input_file}", err=True)
         sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
     finally:
         if logger:
             logger.close()
 
 
+def _direction_check_fn(direction: str, threshold: float):
+    """Create direction check function for stopping rules."""
+    if direction == "ge":
+        return lambda iv: iv.lo > threshold
+    if direction == "le":
+        return lambda iv: iv.hi < threshold
+    return lambda iv: iv.lo > threshold or iv.hi < threshold
+
+
 def _parse_stopping_rule(rule_cfg: dict[str, object] | None) -> StoppingRule | None:
+    """Parse stopping rule configuration.
+
+    Returns None for 'fixed' horizon (no early stopping).
+    """
     if not rule_cfg:
         return None
+
     rule_type = rule_cfg.get("type", "fixed")
+
     if rule_type == "fixed":
         return None
+
     if rule_type == "exclude_threshold":
         threshold = float(rule_cfg.get("threshold", 0.0))
         direction = rule_cfg.get("direction", "both")
         name = f"exclude_{direction}_{threshold}"
+        check_fn = _direction_check_fn(direction, threshold)
+        return StoppingRule(name=name, fn=lambda iv, _t: check_fn(iv))
 
-        def _fn(iv, _t: int) -> bool:
-            if direction == "ge":
-                return iv.lo > threshold
-            if direction == "le":
-                return iv.hi < threshold
-            return iv.lo > threshold or iv.hi < threshold
-
-        return StoppingRule(name=name, fn=_fn)
     if rule_type == "periodic":
         every = int(rule_cfg.get("every", 50))
-        inner = _parse_stopping_rule(rule_cfg.get("rule", {"type": "exclude_threshold"}))
+        inner_cfg = rule_cfg.get("rule", {"type": "exclude_threshold"})
+        inner = _parse_stopping_rule(inner_cfg)
         if inner is None:
             return None
         name = f"periodic_{every}_{inner.name}"
+        return StoppingRule(
+            name=name,
+            fn=lambda iv, t: t % every == 0 and inner.fn(iv, t),
+        )
 
-        def _fn(iv, t: int) -> bool:
-            return t % every == 0 and inner.fn(iv, t)
-
-        return StoppingRule(name=name, fn=_fn)
     raise click.ClickException(f"Unknown stopping rule type: {rule_type}")
 
 

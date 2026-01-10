@@ -3,10 +3,13 @@
 import math
 from dataclasses import dataclass, field
 from collections import deque
-from typing import Deque
+from typing import Deque, TYPE_CHECKING
 
 from anytime.errors import AssumptionViolationError
 from anytime.types import GuaranteeTier
+
+if TYPE_CHECKING:
+    from anytime.spec import StreamSpec
 
 
 @dataclass
@@ -38,6 +41,17 @@ class Diagnostics:
             "drift_detected": self.drift_detected,
             "drift_score": self.drift_score,
         }
+
+    def snapshot(self) -> "Diagnostics":
+        """Create a snapshot copy for storing in outputs."""
+        return Diagnostics(
+            tier=self.tier,
+            out_of_range_count=self.out_of_range_count,
+            missing_count=self.missing_count,
+            clipped_count=self.clipped_count,
+            drift_detected=self.drift_detected,
+            drift_score=self.drift_score,
+        )
 
 
 @dataclass
@@ -84,6 +98,10 @@ class RangeChecker:
 
         return x
 
+    def reset(self) -> None:
+        """Reset diagnostics state."""
+        self.diagnostics = Diagnostics()
+
 
 @dataclass
 class MissingnessTracker:
@@ -104,6 +122,11 @@ class MissingnessTracker:
         if self.total_count == 0:
             return 0.0
         return self.missing_count / self.total_count
+
+    def reset(self) -> None:
+        """Reset tracking state."""
+        self.total_count = 0
+        self.missing_count = 0
 
 
 @dataclass
@@ -161,6 +184,60 @@ class DriftDetector:
             return 0.0
 
         return abs(window_mean - self._global_mean) / global_sd
+
+    def reset(self) -> None:
+        """Reset drift detection state."""
+        self._window.clear()
+        self._global_mean = 0.0
+        self._global_var = 0.0
+        self._n = 0
+        self.drift_detected = False
+
+
+class DiagnosticsSetup:
+    """Container for standard diagnostics components.
+
+    Reduces duplication across CS and e-value classes.
+    """
+
+    def __init__(self, spec: "StreamSpec"):
+        self.diagnostics = Diagnostics()
+        self.range_checker = RangeChecker(spec.support, spec.clip_mode, self.diagnostics)
+        self.missingness = MissingnessTracker()
+        self.drift_detector = DriftDetector()
+
+    def reset(self) -> None:
+        """Reset all diagnostics to initial state."""
+        self.diagnostics = Diagnostics()
+        self.range_checker = RangeChecker(
+            self.range_checker.support, self.range_checker.clip_mode, self.diagnostics
+        )
+        self.missingness.reset()
+        self.drift_detector.reset()
+
+
+def merge_diagnostics(
+    diag_a: Diagnostics | None,
+    diag_b: Diagnostics | None,
+) -> Diagnostics:
+    """Merge two Diagnostics objects into one.
+
+    The merged result combines counts from both and uses the worst tier.
+    """
+    merged = Diagnostics()
+    for diag in (diag_a, diag_b):
+        if diag is None:
+            continue
+        merged.out_of_range_count += diag.out_of_range_count
+        merged.missing_count += diag.missing_count
+        merged.clipped_count += diag.clipped_count
+        merged.drift_detected = merged.drift_detected or diag.drift_detected
+        merged.drift_score = max(merged.drift_score, diag.drift_score)
+        if diag.tier == GuaranteeTier.DIAGNOSTIC:
+            merged.tier = GuaranteeTier.DIAGNOSTIC
+        elif diag.tier == GuaranteeTier.CLIPPED and merged.tier != GuaranteeTier.DIAGNOSTIC:
+            merged.tier = GuaranteeTier.CLIPPED
+    return merged
 
 
 def apply_diagnostics(

@@ -127,3 +127,45 @@ def test_reset(bounded_spec):
 
     cs.reset()
     assert cs.interval().t == 0
+
+
+def test_bernoulli_one_sided():
+    """Bernoulli CS one-sided should produce tighter intervals."""
+    spec_two = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bernoulli", two_sided=True)
+    spec_one = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bernoulli", two_sided=False)
+
+    data = [1, 1, 1, 0, 1, 1, 0, 1, 1, 1] * 10
+
+    cs_two = BernoulliCS(spec_two)
+    cs_one = BernoulliCS(spec_one)
+
+    for x in data:
+        cs_two.update(float(x))
+        cs_one.update(float(x))
+
+    iv_two = cs_two.interval()
+    iv_one = cs_one.interval()
+
+    # One-sided should be tighter (narrower) than two-sided at same alpha
+    assert (iv_one.hi - iv_one.lo) <= (iv_two.hi - iv_two.lo)
+
+
+def test_hoeffding_one_sided():
+    """Hoeffding CS one-sided should produce tighter intervals."""
+    spec_two = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bounded", two_sided=True)
+    spec_one = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bounded", two_sided=False)
+
+    data = [0.5, 0.6, 0.4, 0.55] * 25
+
+    cs_two = HoeffdingCS(spec_two)
+    cs_one = HoeffdingCS(spec_one)
+
+    for x in data:
+        cs_two.update(x)
+        cs_one.update(x)
+
+    iv_two = cs_two.interval()
+    iv_one = cs_one.interval()
+
+    # One-sided should be tighter than two-sided
+    assert (iv_one.hi - iv_one.lo) <= (iv_two.hi - iv_two.lo)
