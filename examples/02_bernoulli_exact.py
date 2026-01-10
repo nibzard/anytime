@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-02_bernoulli_exact.py - Exact Confidence Sequences for Binary Data
+02_bernoulli_exact.py - Bernoulli Confidence Sequences for Binary Data
 
 BEGINNER
 
-This example demonstrates BernoulliCS, which provides EXACT confidence
-sequences for binary (0/1) data. Unlike Hoeffding which uses a conservative
-bound, BernoulliCS is tailored specifically for Bernoulli data and provides
-tighter intervals.
+This example demonstrates BernoulliCS, which provides time-uniform confidence
+sequences for binary (0/1) data using a beta-binomial mixture. Unlike Hoeffding
+which uses a conservative bound, BernoulliCS is tailored specifically for
+Bernoulli data and provides tighter intervals.
 
 SCENARIO:
 You're testing a new coin for fairness. Is it a fair coin (p = 0.5)?
@@ -15,7 +15,7 @@ You flip it repeatedly and want to track your confidence about the true
 probability of heads.
 
 CONCEPTS:
-- BernoulliCS: Exact confidence sequence for 0/1 data
+- BernoulliCS: Bernoulli-specific confidence sequence for 0/1 data
 - kind="bernoulli": Data must be exactly 0 or 1
 - Tighter intervals: More precise than Hoeffding for binary data
 """
@@ -51,15 +51,15 @@ def main():
         name="coin_p"
     )
 
-    # STEP 2: Create exact Bernoulli confidence sequence
+    # STEP 2: Create Bernoulli confidence sequence
     # ---------------------------------------------------
     # Optional: Set Beta prior parameters (default: a=0.5, b=0.5)
-    # These give a uniform prior, making the test "uniformly most powerful"
+    # These give a symmetric prior over p (no directional bias)
     cs = BernoulliCS(spec, a=0.5, b=0.5)
 
     print("\nTesting fairness of a coin (p = 0.5?)")
     print("True probability of heads: 0.52 (slightly unfair!)")
-    print("Using EXACT Bernoulli confidence sequences\n")
+    print("Using Bernoulli-specific confidence sequences\n")
 
     # STEP 3: Compare intervals over time
     # ------------------------------------
@@ -122,7 +122,7 @@ def main():
     print(f"True p: 0.52")
     print(f"Final estimate: {cs.interval().estimate:.3f}")
     print(f"Detected unfair: {'Yes (at t=' + str(detected_unfair) + ')' if detected_unfair else 'No'}")
-    print(f"\nNOTE: With exact Bernoulli CS, we get tighter intervals than")
+    print(f"\nNOTE: With Bernoulli-specific CS, we get tighter intervals than")
     print(f"Hoeffding, making it easier to detect small deviations from 0.5.")
 
 if __name__ == "__main__":

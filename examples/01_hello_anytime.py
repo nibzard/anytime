@@ -101,8 +101,8 @@ def main():
     print(f"Final estimate: {iv.estimate:.3f}")
     print(f"Final 95% CI:   ({iv.lo:.3f}, {iv.hi:.3f})")
     print(f"Total samples:  {iv.t}")
-    print(f"Guarantee tier: {iv.tier}")
-    print(f"\nKEY INSIGHT: We stopped early (at t={decision}) but our")
+    print(f"Guarantee tier: {iv.tier.value}")
+    print(f"\nKEY INSIGHT: We stopped early (at t={decision or 'N/A'}) but our")
     print(f"confidence guarantees remain valid! This is the power of")
     print(f"anytime-valid inference.")
 
