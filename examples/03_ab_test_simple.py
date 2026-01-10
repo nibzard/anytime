@@ -23,9 +23,6 @@ CONCEPTS:
 - e-value decision: When e-value > 1/alpha, we can reject H0
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import ABSpec
 from anytime.evalues import TwoSampleMeanMixtureE
 import random

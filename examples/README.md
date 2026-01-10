@@ -50,9 +50,15 @@ Welcome to the **friendliest** introduction to anytime-valid inference! These ex
 | [`08_multiple_comparisons.py`](08_multiple_comparisons.py) | 20 min | Testing multiple variants? Control error rates properly. |
 | [`09_diagnostic_checks.py`](09_diagnostic_checks.py) | 20 min | Production monitoring. Detect assumption violations. |
 | [`10_custom_datasets.py`](10_custom_datasets.py) | 20 min | CSV, API, streaming. Real data pipelines. |
-| [`11_real_world_data.py`](11_real_world_data.py) | 20 min | **NEW!** Real UCI mushroom dataset. Production patterns. |
+| [`11_real_world_data.py`](11_real_world_data.py) | 20 min | Real UCI mushroom dataset. Production patterns. |
+| [`12_currency_monitoring.py`](12_currency_monitoring.py) | 10 min | **NEW!** Financial metrics. Exchange rates, stock tracking. |
+| [`13_retail_analytics.py`](13_retail_analytics.py) | 15 min | **NEW!** E-commerce. Price testing, A/B optimization. |
+| [`14_medical_trials.py`](14_medical_trials.py) | 15 min | **NEW!** Clinical trials. Vaccine efficacy, safety. |
+| [`15_bandit_optimization.py`](15_bandit_optimization.py) | 20 min | **NEW!** Multi-armed bandit. Exploration vs exploitation. |
+| [`16_time_series.py`](16_time_series.py) | 15 min | **NEW!** Time series monitoring. Confidence bands, anomalies. |
+| [`17_sla_monitoring.py`](17_sla_monitoring.py) | 15 min | **NEW!** SLA/SRE monitoring. Error budgets, uptime. |
 
-**Total advanced time: ~80 minutes**
+**Total advanced time: ~2.5 hours**
 
 ---
 
@@ -68,9 +74,19 @@ Welcome to the **friendliest** introduction to anytime-valid inference! These ex
 00_super_simple.py → 01 → 02 → 03 → 04
 ```
 
-### Path 3: Full Mastery (3 hours)
+### Path 3: Full Mastery (4 hours)
 ```
-Beginner (00-04) → Intermediate (05-07) → Advanced (08-11)
+Beginner (00-04) → Intermediate (05-07) → Advanced (08-17)
+```
+
+### Path 4: Domain-Specific Tracks
+```
+🏦 Finance           → 12 (Currency monitoring)
+🛍️  E-Commerce      → 13 (Retail analytics)
+💉 Healthcare        → 14 (Medical trials)
+🎰 Optimization     → 15 (Bandit algorithms)
+📊 Time Series      → 16 (Monitoring, anomalies)
+🔧 SRE/SLO          → 17 (SLA monitoring)
 ```
 
 ---
@@ -132,6 +148,12 @@ The `datasets/` folder contains sample data:
 | Error Control | 08 | Test multiple variants correctly |
 | Diagnostics | 09 | Production-ready monitoring |
 | Data Pipelines | 10, 11 | Real-world data integration |
+| **Financial Monitoring** | **12** | **Exchange rates, stock tracking** |
+| **E-Commerce Analytics** | **13** | **Price testing, A/B tests** |
+| **Clinical Trials** | **14** | **Vaccine efficacy, safety** |
+| **Bandit Algorithms** | **15** | **Exploration vs exploitation** |
+| **Time Series Bands** | **16** | **Dynamic confidence intervals** |
+| **SLA Monitoring** | **17** | **Error budgets, uptime** |
 
 ---
 

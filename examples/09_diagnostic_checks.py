@@ -21,9 +21,6 @@ CONCEPTS:
 - Production readiness: Building robust monitoring systems
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec, GuaranteeTier
 from anytime.cs import HoeffdingCS, EmpiricalBernsteinCS
 import random

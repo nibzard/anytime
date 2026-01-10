@@ -26,9 +26,6 @@ CONCEPTS:
 - Optional stopping: Stopping early based on data
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import ABSpec
 from anytime.evalues import TwoSampleMeanMixtureE
 import random

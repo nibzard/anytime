@@ -24,9 +24,6 @@ CONCEPTS:
 - Lift estimation: Point estimate and uncertainty for B - A
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import ABSpec
 from anytime.twosample import TwoSampleHoeffdingCS, TwoSampleEmpiricalBernsteinCS
 import random

@@ -21,9 +21,6 @@ CONCEPTS:
 - interval(): Get current confidence interval
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec
 from anytime.cs import HoeffdingCS
 

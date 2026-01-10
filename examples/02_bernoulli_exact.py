@@ -20,9 +20,6 @@ CONCEPTS:
 - Tighter intervals: More precise than Hoeffding for binary data
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec
 from anytime.cs import BernoulliCS
 

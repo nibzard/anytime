@@ -23,9 +23,6 @@ CONCEPTS:
 - When to use each method
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec
 from anytime.cs import HoeffdingCS, EmpiricalBernsteinCS
 import random

@@ -20,9 +20,6 @@ CONCEPTS:
 - Detecting when metrics go out of bounds
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec
 from anytime.cs import EmpiricalBernsteinCS
 import random

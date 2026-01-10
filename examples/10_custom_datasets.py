@@ -25,9 +25,6 @@ CONCEPTS:
 - Production data pipelines
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import StreamSpec, ABSpec
 from anytime.cs import EmpiricalBernsteinCS
 from anytime.evalues import TwoSampleMeanMixtureE

@@ -23,9 +23,6 @@ CONCEPTS:
 - Union-intersection testing: Combining evidence across tests
 """
 
-import sys
-sys.path.insert(0, '..')
-
 from anytime import ABSpec
 from anytime.evalues import TwoSampleMeanMixtureE
 import random
