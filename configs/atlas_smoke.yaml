@@ -1,0 +1,63 @@
+n_sim: 200
+
+one_sample:
+  spec:
+    alpha: 0.05
+    support: [0.0, 1.0]
+    kind: bernoulli
+    two_sided: true
+    name: bernoulli_mean
+  methods:
+    - hoeffding
+    - empirical_bernstein
+    - bernoulli
+  stopping_rule:
+    type: exclude_threshold
+    threshold: 0.5
+    direction: both
+  scenarios:
+    - name: bernoulli_null
+      distribution: bernoulli
+      true_mean: 0.5
+      n_max: 200
+      seed: 123
+      is_null: true
+    - name: bernoulli_alt
+      distribution: bernoulli
+      true_mean: 0.55
+      n_max: 200
+      seed: 456
+      is_null: false
+
+two_sample:
+  spec:
+    alpha: 0.05
+    support: [0.0, 1.0]
+    kind: bernoulli
+    two_sided: true
+    name: ab_lift
+  methods:
+    - hoeffding
+    - empirical_bernstein
+  stopping_rule:
+    type: periodic
+    every: 25
+    rule:
+      type: exclude_threshold
+      threshold: 0.0
+      direction: both
+  scenarios:
+    - name: ab_null
+      distribution: bernoulli
+      true_mean: 0.1
+      true_lift: 0.0
+      n_max: 200
+      seed: 321
+      is_null: true
+    - name: ab_alt
+      distribution: bernoulli
+      true_mean: 0.1
+      true_lift: 0.02
+      n_max: 200
+      seed: 654
+      is_null: false

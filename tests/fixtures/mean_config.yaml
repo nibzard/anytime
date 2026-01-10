@@ -1,0 +1,7 @@
+alpha: 0.1
+support: [0.0, 1.0]
+kind: bounded
+two_sided: true
+method: hoeffding
+input: tests/fixtures/mean_small.csv
+column: value
