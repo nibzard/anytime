@@ -53,7 +53,7 @@ SCENARIO: Tracking daily exercise habit
         days.append(done)
 
     # Track with confidence
-    spec = StreamSpec(alpha=0.05, support=(0, 1), kind="bounded", two_sided=True)
+    spec = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bernoulli", two_sided=True)
     cs = BernoulliCS(spec)
 
     print("\n" + "-" * 70)
@@ -221,7 +221,7 @@ SCENARIO: Tracking a daily meditation streak
         streaks.append(current_streak)
 
     # Track overall consistency
-    spec = StreamSpec(alpha=0.05, support=(0, 1), kind="bounded", two_sided=True)
+    spec = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bernoulli", two_sided=True)
     cs = BernoulliCS(spec)
 
     for day in days:
@@ -270,7 +270,7 @@ SCENARIO: Comparing three habit strategies
     results = {}
 
     for strategy, true_rate in strategies.items():
-        spec = StreamSpec(alpha=0.05, support=(0, 1), kind="bounded", two_sided=True)
+        spec = StreamSpec(alpha=0.05, support=(0.0, 1.0), kind="bernoulli", two_sided=True)
         cs = BernoulliCS(spec)
 
         random.seed(hash(strategy))
@@ -363,8 +363,8 @@ class HabitAnalyzer:
     def __init__(self, habit_name):
         spec = StreamSpec(
             alpha=0.05,
-            support=(0, 1),
-            kind="bounded",
+            support=(0.0, 1.0),
+            kind="bernoulli",
             two_sided=True
         )
         self.cs = BernoulliCS(spec)
