@@ -148,7 +148,7 @@ Real examples you might recognize:
 
 ## With traditional methods: Peeking = Inflated False Positives
 
-![Peeking Inflates False Positives](images/peeking_inflation.png)
+<img src="images/peeking_inflation.png" width="60%" />
 
 <span class="highlight">You might be shipping features that don't actually work</span>
 
@@ -170,33 +170,50 @@ Imagine flipping a **fair coin** 100 times
 
 # Why Traditional Methods Fail
 
-## Traditional statistics assumes:
-
-> "I'll check results **EXACTLY once** at n=1000"
+**Assumes:** "I'll check results **EXACTLY once** at n=1000"
 
 <br>
 
-### What actually happens:
+**What actually happens:**
 
 - P-values assume you won't peek
-- When you peek and stop early → assumptions break
-- It's like breaking a contract with the math
-- Result: Your "significant" results might be **random noise**
+- Peek + stop early → assumptions break
+- Result: **Random noise** disguised as significance
 
 ---
 
 # The Business Impact
 
-### Why should you care?
+**Why should you care?**
 
-- You ship features that don't actually improve metrics
-- **Revenue impact**: False positives cost money
-- **Team morale**: "Why did that feature fail in production?"
-- **Career impact**: Making decisions on bad data
+- Ship features that don't actually improve metrics
+- **Revenue:** False positives cost money
+- **Morale:** "Why did that feature fail in production?"
+- **Career:** Making decisions on bad data
+
+<span class="highlight">Real companies have lost millions this way</span>
+
+---
+
+# What is a P-value?
+
+## The chance your results are just random luck (not a real effect)
 
 <br>
 
-<span class="highlight">Real companies have lost millions this way</span>
+### Key points:
+
+- **p < 0.05**: "Statistically significant" (only 5% chance this is random noise)
+- **Assumes**: You decide sample size in advance and check results exactly once
+- **The catch**: P-hacking breaks these assumptions!
+
+<br>
+
+### The problem:
+
+If you peek and stop when significant, your "p < 0.05" might actually be p > 0.30
+
+<span class="highlight">The p-value assumes you didn't peek... but you did!</span>
 
 ---
 
@@ -208,6 +225,26 @@ Peeking is a type of **p-hacking**
 - Related to the **reproducibility crisis** in science
 - Common theme: Using the data to decide what to do with the data
 - This is **circular reasoning**!
+
+---
+
+# What is P-hacking?
+
+## The deliberate or accidental manipulation of data analysis to find patterns that appear significant
+
+<br>
+
+### Common p-hacking techniques:
+
+- **Optional stopping**: Checking results and stopping when you see significance
+- **Data dredging**: Testing many variables until something "pops"
+- **Cherry-picking**: Reporting only significant outcomes, ignoring others
+- **Subgroup analysis**: slicing data until you find significance
+- **Excluding outliers**: Removing data points to improve p-values
+
+<br>
+
+<span class="highlight">Result: False findings that can't be reproduced</span>
 
 ---
 
@@ -330,7 +367,7 @@ With 95% confidence, the ball stays inside
 2. **Empirical Bernstein CS**: Adaptive, narrower intervals
 3. **Bernoulli CS**: For conversion rates (binary data)
 
-![Method Comparison](images/method_comparison.png)
+<img src="images/method_comparison.png" width="60%" />
 
 <span class="success">Bernoulli is tightest for binary data (MVP for A/B testing!)</span>
 
@@ -404,17 +441,11 @@ Click-through rates, conversion rates
 
 Anytime methods are slightly more conservative
 
-- Result: Wider intervals, maybe need ~10% more samples
-- **But**: Valid guarantees vs invalid results
-- **Worth it?** Absolutely!
+- **Trade-off:** Wider intervals, ~10% more samples
+- **Benefit:** Valid guarantees vs invalid results
+- **Result:** Better to be right than fast-and-wrong
 
-<br>
-
-<span class="success">Better to be right than fast-and-wrong</span>
-
-<br>
-
-In practice: Difference is often negligible
+<span class="success">In practice: Difference is often negligible</span>
 
 ---
 
@@ -422,13 +453,13 @@ In practice: Difference is often negligible
 
 ## Alternative to p-values
 
-![E-Value Growth](images/evalue_growth.png)
+<img src="images/evalue_growth.png" width="60%" />
 
 <span class="success">Stop when e-value crosses threshold (20 for α=0.05)</span>
 
 ---
 
-# The Guarantee Tiers (Production-Ready!)
+# The Guarantee Tiers
 
 The library automatically checks assumptions!
 
@@ -472,7 +503,7 @@ pip install anytime
 <br>
 
 ### GitHub:
-https://github.com/yourusername/anytime
+https://github.com/nibzard/anytime
 
 ---
 
@@ -700,38 +731,22 @@ plot_interval_band(
 
 # Real-World A/B Testing
 
-Companies using anytime methods:
+**Users:** Optimizely, VWO, Netflix, Airbnb
 
-- **Optimizely, VWO, Netflix, Airbnb**
+| Problem | Old Solution | New Solution |
+|---|---|---|
+| Check results daily | "Don't peek!" (ignored) | Anytime-valid inference |
 
-<br>
-
-### The Problem:
-Customers want to check results daily
-
-<br>
-
-### Old Solution:
-"Don't peek!" (everyone ignored this)
-
-<br>
-
-### New Solution:
-<span class="success">Anytime-valid inference (peek safely!)</span>
-
-<br>
-
-### Impact:
-Valid results, faster decisions
+<span class="success">Impact: Valid results, faster decisions</span>
 
 ---
 
-# Application 1 - Website Conversion Testing
+# Application 1 - Website Conversion
 
 ## Scenario:
 New checkout flow vs existing
 
-![A/B Test Dashboard](images/ab_test_dashboard.png)
+<img src="images/ab_test_dashboard.png" width="60%" />
 
 <span class="success">Savings: Stop 50-70% earlier if clear winner</span>
 
@@ -739,25 +754,13 @@ New checkout flow vs existing
 
 # Application 2 - Price Testing
 
-## Scenario:
-Test different price points
+**Test:** Different price points
 
-<br>
+**Challenge:** Can't afford long tests (revenue impact)
 
-### Challenge:
-Can't afford long tests (revenue impact)
+**Solution:** Multi-armed bandit + anytime inference
 
-<br>
-
-### Solution:
-Multi-armed bandit with anytime inference
-
-<br>
-
-### Result:
-Shift traffic to winning prices quickly
-
-<br>
+**Result:** Shift traffic to winning prices quickly
 
 Example: `examples/13_retail_analytics.py`
 
@@ -765,90 +768,57 @@ Example: `examples/13_retail_analytics.py`
 
 # Application 3 - Email Campaign Testing
 
-## Scenario:
-Test subject lines, send times, content
-
-<br>
+**Test:** Subject lines, send times, content
 
 | Old way | New way |
 |---|---|
-| Fixed sample size, slow iteration | Monitor, stop losers early, scale winners |
-
-<br>
+| Fixed sample, slow | Monitor, stop losers early, scale winners |
 
 <span class="success">Impact: 20-30% improvement in open rates</span>
-
-<br>
 
 Method: A/B testing with e-values
 
 ---
 
-# Application 4 - Feature Rollout Monitoring
+# Application 4 - Feature Rollout
 
-## Scenario:
-New feature launch, track success metrics
+**Track:** New feature launch success metrics
 
-<br>
+**Challenge:** When to rollback vs continue?
 
-### Challenge:
-When to rollback vs continue?
+**Solution:** Real-time confidence sequences
 
-<br>
-
-### Solution:
-Real-time confidence sequences
-
-<br>
-
-### Decision rule:
-Rollback if CI doesn't target
-
-<br>
+**Rule:** Rollback if CI doesn't target
 
 Example: `examples/17_sla_monitoring.py`
 
 ---
 
-# Application 5 - Multi-Variant Testing
+# Application 5 - Multi-Variant Tests
 
-## Scenario:
-Test 5 different headline variants
+**Test:** 5 different headline variants
 
-<br>
+**Challenge:** Multiple comparisons inflate error rate
 
-### Challenge:
-Multiple comparisons inflate error rate
-
-<br>
-
-### Solution:
-Bonferroni correction + anytime methods
-
-<br>
+**Solution:** Bonferroni correction + anytime methods
 
 Code: `examples/08_multiple_comparisons.py`
-
-<br>
 
 <span class="success">Result: Valid inference across all variants</span>
 
 ---
 
-# Case Study - E-commerce Price Optimization
+# Case Study - E-commerce Pricing
 
-### Company:
-Online retailer
-
-<br>
-
-### Problem:
-Finding optimal price point
+### Company: Online retailer
 
 <br>
 
-### Solution:
-Multi-armed bandit with confidence sequences
+### Problem: Finding optimal price point
+
+<br>
+
+### Solution: Multi-armed bandit with confidence sequences
 
 <br>
 
@@ -862,20 +832,17 @@ Multi-armed bandit with confidence sequences
 
 ---
 
-# Case Study - SaaS Conversion Funnel
+# Case Study - SaaS Funnel
 
-### Company:
-B2B software company
-
-<br>
-
-### Problem:
-Optimize sign-up flow (5 steps to test)
+### Company: B2B software company
 
 <br>
 
-### Solution:
-Sequential testing with anytime methods
+### Problem: Optimize sign-up flow (5 steps to test)
+
+<br>
+
+### Solution: Sequential testing with anytime methods
 
 <br>
 
@@ -889,7 +856,7 @@ Method: Confidence sequences at each funnel step
 
 ---
 
-# Best Practices for Business A/B Tests
+# Best Practices for A/B Tests
 
 1. Define minimum detectable effect upfront
 2. Use Bernoulli CS for conversion metrics
@@ -900,19 +867,17 @@ Method: Confidence sequences at each funnel step
 
 ---
 
-# Common Pitfalls in Business Context
+# Common Pitfalls in A/B Tests
 
 <span class="highlight">Avoid these mistakes:</span>
 
-- ❌ Stopping too early (no practical significance)
-- ❌ Ignoring the guarantee tier
-- ❌ Testing too many variants without correction
-- ❌ Not accounting for seasonality/day-of-week
-- ❌ Stopping during holiday weekends
+- ❌ Stop too early (no practical significance)
+- ❌ Ignore guarantee tier
+- ❌ Test too many variants without correction
+- ❌ Don't account for seasonality
+- ❌ Stop during holiday weekends
 
-<br>
-
-<span class="success">✓ All of these are avoidable!</span>
+<span class="success">✓ All avoidable!</span>
 
 ---
 
@@ -948,7 +913,7 @@ Method: Confidence sequences at each funnel step
 
 ---
 
-# Practice Exercise 1 - Basic Usage
+# Practice Exercise 1 - Basics
 
 <br>
 
@@ -996,7 +961,7 @@ data_b = [1, 1, 0, 1, 1, 1, 0, 1, 1, 0]
 
 ---
 
-# Practice Exercise 3 - Interpret Results
+# Practice Exercise 3 - Results
 
 <br>
 
@@ -1026,7 +991,7 @@ Given this output: `Interval(lower=0.12, upper=0.34, tier='GOLD')`
 
 ---
 
-# Resources for Learning More
+# Resources
 
 <br>
 
@@ -1038,7 +1003,7 @@ Given this output: `Interval(lower=0.12, upper=0.34, tier='GOLD')`
 
 ---
 
-# What to Remember (Key Points)
+# Key Points to Remember
 
 <!-- _class: lead -->
 
@@ -1062,7 +1027,7 @@ Given this output: `Interval(lower=0.12, upper=0.34, tier='GOLD')`
 
 ---
 
-# Next Steps - Apply What You Learned
+# Next Steps
 
 1. **Today**: Run examples 00-05 (20 minutes)
 2. **This week**: Try on your own data/project
@@ -1095,7 +1060,7 @@ pip install anytime
 <br>
 
 ### GitHub:
-https://github.com/yourusername/anytime
+https://github.com/nibzard/anytime
 
 <br>
 
