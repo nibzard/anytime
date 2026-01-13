@@ -148,11 +148,7 @@ Real examples you might recognize:
 
 ## With traditional methods: Peeking = Inflated False Positives
 
-| What you expect | What actually happens |
-|---|---|
-| 5% false positive rate | **30-50% false positive rate** |
-
-<br>
+![Peeking Inflates False Positives](images/peeking_inflation.png)
 
 <span class="highlight">You might be shipping features that don't actually work</span>
 
@@ -292,20 +288,7 @@ The math has evolved to match real-world behavior
 
 # Visual Explanation: The Confidence Funnel
 
-<br>
-
-```
-    ╱╲                                    ╱╲
-   ╱  ╲    Wide at first              ╱  ╲  Narrow over time
-  ╱    ╲   (high uncertainty)        ╱    ╲ (high precision)
- ╱──────╲                          ╱──────╲
-│  θ*   │ ← True value stays      │  θ*   │ ← True value stays
-│       │   inside with 95%        │       │   inside with 95%
-╱───────╲                          ╱───────╲
- t=1                                t=100
-```
-
-<br>
+![Confidence Funnel](images/confidence_funnel.png)
 
 **Key Insight:**
 - Wide at first (lots of uncertainty)
@@ -337,12 +320,7 @@ With 95% confidence, the ball stays inside
 
 # Traditional vs Anytime
 
-| Traditional CI | Confidence Sequence |
-|---|---|
-| Check once | Check anytime |
-| Invalid if you peek | Valid even with peeking |
-| 5% false positive (if you follow rules) | 5% false positive (always) |
-| Fixed sample size | Flexible sample size |
+![Traditional CI vs Confidence Sequence](images/traditional_vs_cs.png)
 
 ---
 
@@ -352,13 +330,9 @@ With 95% confidence, the ball stays inside
 2. **Empirical Bernstein CS**: Adaptive, narrower intervals
 3. **Bernoulli CS**: For conversion rates (binary data)
 
-<br>
+![Method Comparison](images/method_comparison.png)
 
-<span class="success">Don't worry about the math - the library handles it!</span>
-
-<br>
-
-Choose based on your data type
+<span class="success">Bernoulli is tightest for binary data (MVP for A/B testing!)</span>
 
 ---
 
@@ -448,13 +422,9 @@ In practice: Difference is often negligible
 
 ## Alternative to p-values
 
-- Can update sequentially as data comes in
-- Decision: Stop when e-value ≥ 1/α (e.g., 20 for α=0.05)
-- Perfect for: Comparing two variants, stop when confident
+![E-Value Growth](images/evalue_growth.png)
 
-<br>
-
-<span class="success">E-value grows with evidence</span>
+<span class="success">Stop when e-value crosses threshold (20 for α=0.05)</span>
 
 ---
 
@@ -462,15 +432,7 @@ In practice: Difference is often negligible
 
 The library automatically checks assumptions!
 
-<br>
-
-| Tier | Meaning |
-|---|---|
-| **GOLD** | Everything working → trust the results |
-| **SILVER** | Minor issues → still valid, conservative |
-| **BRONZE** | Major issues → diagnostic only, investigate |
-
-<br>
+![Guarantee Tiers](images/guarantee_tiers.png)
 
 <span class="warning">Always check the tier before making decisions!</span>
 
@@ -658,19 +620,7 @@ for conv_a, conv_b in zip(data_a, data_b):
 
 # The Business Case - Early Stopping
 
-| Traditional A/B test | Anytime A/B test |
-|---|---|
-| Wait 2 weeks, 10,000 users | Stop at 3,000 users if significant |
-
-<br>
-
-### Savings: 70% less time, same statistical guarantees
-
-<br>
-
-Impact: Faster iteration, more experiments
-
-<br>
+![Early Stopping Distribution](images/early_stopping_distribution.png)
 
 <span class="success">Real example: Optimizely, VWO use these methods</span>
 
@@ -781,17 +731,7 @@ Valid results, faster decisions
 ## Scenario:
 New checkout flow vs existing
 
-<br>
-
-| Old way | New way |
-|---|---|
-| Run for 2 weeks, analyze once | Monitor daily, stop when confident |
-
-<br>
-
-Code example: `examples/03_ab_test_simple.py`
-
-<br>
+![A/B Test Dashboard](images/ab_test_dashboard.png)
 
 <span class="success">Savings: Stop 50-70% earlier if clear winner</span>
 
